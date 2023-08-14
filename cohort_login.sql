@@ -222,3 +222,19 @@ max(case when retention_month = 11 and cohort_month ='2022-06-01' then retention
  from month_cohorts group by 1
  
 
+
+
+----RETENTION_YEAR
+
+
+WITH cohorts AS (
+    SELECT 
+        user_id,
+        DATE_TRUNC('year', login_date) AS cohort_year,
+        DATE_DIFF('month', DATE_TRUNC('year', login_date), MIN(DATE_TRUNC('year', login_date)) OVER (PARTITION BY user_id)) AS retention_month,
+        (DATE_DIFF('year', DATE_TRUNC('year', login_date), MIN(DATE_TRUNC('year', login_date)) OVER (PARTITION BY user_id)) * 12 + DATE_DIFF('month', DATE_TRUNC('year', login_date), MIN(DATE_TRUNC('year', login_date)) OVER (PARTITION BY user_id))) / 12 AS retention_year
+    FROM 
+        users_login_table 
+    WHERE 
+        CAST(approval_datetime AS date) >= DATE '2021-01-01'
+)
