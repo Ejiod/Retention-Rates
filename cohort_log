@@ -1,0 +1,38 @@
+-- Cohorts based on year and product version
+WITH cohorts AS (
+    SELECT 
+        user_id,
+        product_version,
+        DATE_TRUNC('year', login_date) AS cohort_year,
+        MIN(DATE_TRUNC('year', login_date)) OVER (PARTITION BY user_id) AS first_login_year
+    FROM 
+        users_login_table 
+    WHERE 
+        CAST(approval_datetime AS date) >= DATE '2021-01-01'
+),
+
+-- Count of users by product version, cohort year, and first login year
+product_migration AS (
+    SELECT 
+        product_version,
+        cohort_year,
+        first_login_year,
+        COUNT(DISTINCT user_id) AS number_of_users
+    FROM 
+        cohorts
+    GROUP BY 
+        product_version, cohort_year, first_login_year
+)
+
+-- Display migration matrix
+SELECT 
+    first_login_year AS "Migration From",
+    cohort_year AS "Migration To",
+    product_version AS "Product Version",
+    SUM(number_of_users) AS "Number of Users"
+FROM 
+    product_migration
+GROUP BY 
+    first_login_year, cohort_year, product_version
+ORDER BY 
+    first_login_year, cohort_year, product_version;
