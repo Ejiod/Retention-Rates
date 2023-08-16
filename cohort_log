@@ -82,3 +82,46 @@ FROM
 ORDER BY 
     first_login_year, cohort_year, initial_product, migrated_product;
 
+
+--Simplified version
+-- Step 1: Define cohorts based on the year of the first purchase
+WITH cohorts AS (
+    SELECT
+        user_id,
+        DATE_TRUNC('YEAR', MIN(transaction_date)::DATE) AS cohort_year
+    FROM 
+        transaction
+    GROUP BY 
+        user_id
+),
+
+-- Step 2: Assign each transaction to a cohort
+transactions_with_cohort AS (
+    SELECT
+        t.user_id,
+        t.product,
+        t.transaction_date,
+        DATE_TRUNC('YEAR', t.transaction_date::DATE) AS transaction_year,
+        c.cohort_year
+    FROM 
+        transaction t
+    JOIN 
+        cohorts c ON t.user_id = c.user_id
+),
+
+-- Step 3: Calculate yearly retention rate
+retention AS (
+    SELECT
+        cohort_year,
+        transaction_year,
+        COUNT(DISTINCT user_id) * 1.0 / (SELECT COUNT(DISTINCT user_id) FROM cohorts WHERE cohort_year = r.cohort_year) AS retention_rate
+    FROM 
+        transactions_with_cohort r
+    GROUP BY 
+        cohort_year, transaction_year
+    ORDER BY 
+        cohort_year, transaction_year
+)
+
+SELECT * FROM retention;
+
